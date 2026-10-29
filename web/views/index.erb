@@ -1,0 +1,39 @@
+<h1>Libraries</h1>
+
+<% if @libraries.empty? %>
+  <p class="muted">No libraries yet. Extract an article below to start one.</p>
+<% else %>
+  <table>
+    <thead><tr><th>Library</th><th>Claims</th><th>Judged</th><th>Sources read</th></tr></thead>
+    <tbody>
+      <% @libraries.each do |name, library| %>
+        <tr>
+          <td><a href="/libraries/<%= h name %>"><%= h name %></a></td>
+          <td><%= library.records.size %></td>
+          <td><%= library.judged.size %></td>
+          <td><%= library.records.count { |r| r.source&.readable? } %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>
+
+<h2>Extract an article</h2>
+<p class="muted">Adds one claim per cited sentence of a revision. A title alone takes the latest revision.
+  Extracting into an existing library adds only new claims and never touches a judgment.</p>
+<% if @error %><p class="error"><%= h @error %></p><% end %>
+<form method="post" action="/extract" class="stack" id="extract">
+  <label>Article title <input name="title" value="<%= h params[:title] %>" placeholder="Surrogacy in India"></label>
+  <label>or revision id <input name="rev" value="<%= h params[:rev] %>" inputmode="numeric" placeholder="1321874993"></label>
+  <label>Language <input name="language" value="<%= h(params[:language] || 'en') %>" size="4"></label>
+  <label>Library name <input name="library" value="<%= h params[:library] %>" placeholder="taken from the title if blank"></label>
+  <button>Extract</button>
+</form>
+
+<script>
+  document.getElementById('extract').addEventListener('submit', function (event) {
+    var button = event.target.querySelector('button');
+    button.disabled = true;
+    button.textContent = 'Extracting… this can take a few seconds';
+  });
+</script>

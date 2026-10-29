@@ -1,0 +1,86 @@
+<p class="muted">
+  <%= h @record.article_title %> · revision
+  <%= link("https://#{@record.wiki}.org/w/index.php?oldid=#{@record.mw_rev_id}", @record.mw_rev_id.to_s) %>
+  · claim <%= h @record.id %>
+  <% if @record.judged? %>· <strong>already judged</strong>, saving replaces the judgment<% end %>
+</p>
+
+<div class="columns">
+  <section>
+    <h2>Claim</h2>
+    <blockquote class="claim"><%= h @record.sentence %></blockquote>
+
+    <h3>In context</h3>
+    <p class="context"><%= h @record.context %></p>
+
+    <h3>Citation</h3>
+    <p><%= h @record.citation['text'] %></p>
+    <% (@record.citation['urls'] + @record.citation['archive_urls']).each do |url| %>
+      <div class="url"><%= link(url) %></div>
+    <% end %>
+
+    <h2>Your judgment</h2>
+    <% if @errors&.any? %>
+      <ul class="error"><% @errors.each do |error| %><li><%= h error %></li><% end %></ul>
+    <% end %>
+    <form method="post" action="<%= claim_path(@name, @record) %>" class="stack">
+      <fieldset>
+        <legend>Verdict</legend>
+        <% ClaimLibrary::Judgment::VERDICTS.each do |verdict| %>
+          <label class="choice"><input type="radio" name="verdict" value="<%= verdict %>" required
+            <%= 'checked' if @judgment&.verdict == verdict %>> <%= verdict %></label>
+        <% end %>
+      </fieldset>
+
+      <label>Reason (one to three sentences)
+        <textarea name="reason" rows="3" required><%= h @judgment&.reason %></textarea></label>
+
+      <label>Passage quoted from the source (blank only if undetermined)
+        <textarea name="passage" id="passage" rows="4"><%= h @judgment&.passage %></textarea></label>
+      <button type="button" class="secondary" id="use-selection">Use text selected in the source</button>
+
+      <fieldset>
+        <legend>Flags</legend>
+        <% ClaimLibrary::Judgment::FLAGS.each do |flag| %>
+          <label class="choice"><input type="checkbox" name="flags[]" value="<%= flag %>"
+            <%= 'checked' if @judgment&.flags&.include?(flag) %>> <%= flag %></label>
+        <% end %>
+      </fieldset>
+
+      <label>Annotator <input name="annotator" required value="<%= h(@judgment&.annotator || @annotator) %>"></label>
+
+      <div class="actions">
+        <button>Save judgment</button>
+        <a class="button secondary" href="/libraries/<%= h @name %>/next?after=<%= h @record.id %>">Skip</a>
+      </div>
+    </form>
+  </section>
+
+  <section class="source">
+    <h2>Source</h2>
+    <% if @source.nil? %>
+      <p>No URL in the citation (offline source). Only <em>undetermined</em> with no passage can be recorded.</p>
+    <% elsif !@source.readable? %>
+      <p class="error"><%= h @source.kind %>, could not be read: <%= h @source.error %></p>
+      <p><a href="?retry=1">Try fetching again</a> (each copy can take a while to fail)</p>
+    <% else %>
+      <p><%= h @source.kind %>, read from <%= link(@source.read_from) %></p>
+      <% passages = ClaimLibrary::PassageFinder.new(@source.text).passages_for(@record.sentence) %>
+      <h3>Likely passages</h3>
+      <% if passages.empty? %>
+        <p class="muted">No passage in the source resembles the claim.</p>
+      <% else %>
+        <% passages.each do |passage| %><p class="passage"><%= h passage %></p><% end %>
+      <% end %>
+      <h3>Full text</h3>
+      <div class="fulltext" id="fulltext"><% @source.text.split("\n\n").each do |paragraph| %><p><%= h paragraph %></p><% end %></div>
+    <% end %>
+  </section>
+</div>
+
+<script>
+  document.getElementById('use-selection').addEventListener('click', function () {
+    var text = window.getSelection().toString().replace(/\s+/g, ' ').trim();
+    if (text) { document.getElementById('passage').value = text; }
+  });
+</script>

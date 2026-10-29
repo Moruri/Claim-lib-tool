@@ -1,0 +1,56 @@
+<h1><%= h @name %></h1>
+
+<% if params[:found] %>
+  <p class="notice">Found <%= h params[:found] %> cited sentences, <%= h params[:added] %> new, in library <strong><%= h @name %></strong>.</p>
+<% end %>
+
+<%
+  records = @library.records
+  read = records.count { |r| r.source&.readable? }
+  unreadable = records.count { |r| r.source && !r.source.readable? }
+  offline = records.count { |r| r.source_url.nil? }
+%>
+<p>
+  <%= records.size %> claims from <%= records.map(&:article_title).uniq.size %> article(s) ·
+  <strong><%= @library.judged.size %> judged</strong> ·
+  sources: <%= read %> read, <%= unreadable %> unreadable, <%= offline %> offline,
+  <%= records.size - read - unreadable - offline %> not fetched yet
+</p>
+
+<div class="actions">
+  <a class="button" href="/libraries/<%= h @name %>/next">Judge the next unjudged claim</a>
+  <% if @job && @job[:running] %>
+    <span class="muted">Fetching sources: <%= @job[:done] %> of <%= @job[:total] %>, <%= @job[:read] %> read so far…</span>
+  <% else %>
+    <form method="post" action="/libraries/<%= h @name %>/fetch" class="inline">
+      <button class="secondary">Fetch all sources</button>
+    </form>
+    <% if @job %><span class="muted">Last fetch read <%= @job[:read] %> of <%= @job[:total] %>.</span><% end %>
+  <% end %>
+</div>
+
+<nav class="tabs">
+  <% %w[all unjudged judged].each do |show| %>
+    <a href="?show=<%= show %>" class="<%= 'current' if show == @show %>"><%= show %></a>
+  <% end %>
+</nav>
+
+<table class="claims">
+  <thead><tr><th>Claim</th><th>Source</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <% @records.each do |record| %>
+      <tr>
+        <td>
+          <a href="<%= claim_path(@name, record) %>"><%= h record.sentence %></a>
+          <div class="cite muted"><%= h record.citation['text'].to_s[0, 110] %><%= '…' if record.citation['text'].to_s.length > 110 %></div>
+        </td>
+        <td class="nowrap">
+          <% if record.source_url.nil? %>offline
+          <% elsif record.source.nil? %><span class="muted">not fetched</span>
+          <% else %><%= h record.source.kind %>, <%= h record.source.status %><% end %>
+        </td>
+        <td class="nowrap"><%= record.judged? ? %(<span class="verdict #{h record.judgment.verdict}">#{h record.judgment.verdict}</span>) : '<span class="muted">—</span>' %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

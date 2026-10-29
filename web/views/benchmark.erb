@@ -1,0 +1,21 @@
+<h1>Benchmark a verifier</h1>
+<p class="muted">Runs a verifier over every judged claim and compares its verdicts with yours. A verifier is any
+  executable in <code>lib/claim_library/verifiers/</code> that reads one claim as JSON on standard input and
+  prints <code>{"verdict": "..."}</code>. <code>always_full_support.rb</code> is the baseline to beat.</p>
+
+<form method="post" action="/libraries/<%= h @name %>/benchmark" class="inline">
+  <select name="verifier">
+    <% @verifiers.each do |verifier| %>
+      <option <%= 'selected' if verifier == @verifier %>><%= h verifier %></option>
+    <% end %>
+  </select>
+  <button>Run</button>
+</form>
+
+<% if @comparison %>
+  <% if @comparison.results.empty? %>
+    <p class="notice">No judged claims yet, so there is nothing to compare against.</p>
+  <% else %>
+    <article class="report"><%= markdown(@comparison.to_markdown) %></article>
+  <% end %>
+<% end %>
